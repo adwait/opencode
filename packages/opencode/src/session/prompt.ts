@@ -630,6 +630,7 @@ export namespace SessionPrompt {
     SessionCompaction.prune({ sessionID })
     for await (const item of MessageV2.stream(sessionID)) {
       if (item.info.role === "user") continue
+      await ensurePlanSpec({ session, message: item })
       const queued = state()[sessionID]?.callbacks ?? []
       for (const q of queued) {
         q.resolve(item)
@@ -1251,6 +1252,8 @@ export namespace SessionPrompt {
     if (input.agent.name === "plan" && assistantMessage?.info.agent !== "plan") {
       const plan = Session.plan(input.session)
       const exists = await Bun.file(plan).exists()
+      const spec = Session.spec(input.session)
+      const specExists = await Bun.file(spec).exists()
       if (!exists) await fs.mkdir(path.dirname(plan), { recursive: true })
       const part = await Session.updatePart({
         id: Identifier.ascending("part"),
@@ -1262,7 +1265,11 @@ Plan mode is active. The user indicated that they do not want you to execute yet
 
 ## Plan File Info:
 ${exists ? `A plan file already exists at ${plan}. You can read it and make incremental edits using the edit tool.` : `No plan file exists yet. You should create your plan at ${plan} using the write tool.`}
+## Spec File Info:
+${specExists ? `A spec file already exists at ${spec}. You can read it and update it using the edit tool.` : `No spec file exists yet. You should create it at ${spec} using the write tool.`}
 You should build your plan incrementally by writing to or editing this file. NOTE that this is the only file you are allowed to edit - other than this you are only allowed to take READ-ONLY actions.
+
+You MUST also write a machine-readable YAML spec file at the path above. The spec should list proposed functions and their requirements. Do NOT include YAML in chat; only write it to the spec file.
 
 ## Plan Workflow
 
@@ -1818,5 +1825,102 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         },
         { touch: false },
       )
+  }
+
+  async function ensurePlanSpec(input: { session: Session.Info; message: MessageV2.WithParts }) {
+    if (input.message.info.role !== "assistant") return
+    if (input.message.info.agent !== "plan") return
+
+    const specPath = Session.spec(input.session)
+    const file = Bun.file(specPath)
+    const exists = await file.exists()
+    if (!exists) {
+      await warnPlanSpec({ sessionID: input.session.id, messageID: input.message.info.id, specPath, reason: "missing" })
+      return
+    }
+
+    const text = await file.text()
+    const parsed = parsePlanSpec(text)
+    if (parsed.ok) return
+    await warnPlanSpec({
+      sessionID: input.session.id,
+      messageID: input.message.info.id,
+      specPath,
+      reason: parsed.reason,
+    })
+  }
+
+  type PlanSpecResult = { ok: true } | { ok: false; reason: string }
+
+  function parsePlanSpec(text: string): PlanSpecResult {
+    const lines = text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith("#"))
+
+    const hasVersion = lines.some((line) => line.startsWith("version:"))
+    if (!hasVersion) return { ok: false, reason: "missing version" }
+
+    const functionsIndex = lines.findIndex((line) => line.startsWith("functions:"))
+    if (functionsIndex === -1) return { ok: false, reason: "missing functions" }
+
+    const entries: Array<{ name?: string; description?: string; specs?: string[] }> = []
+    let current: { name?: string; description?: string; specs?: string[] } | undefined
+
+    for (const line of lines.slice(functionsIndex + 1)) {
+      if (line.startsWith("- name:")) {
+        if (current) entries.push(current)
+        current = { name: line.replace("- name:", "").trim() }
+        continue
+      }
+
+      if (!current) continue
+
+      if (line.startsWith("description:")) {
+        current.description = line.replace("description:", "").trim()
+        continue
+      }
+
+      if (line.startsWith("specs:")) {
+        current.specs = []
+        continue
+      }
+
+      if (line.startsWith("-") && current.specs) {
+        const item = line.replace("-", "").trim()
+        if (item.length > 0) current.specs.push(item)
+      }
+    }
+
+    if (current) entries.push(current)
+
+    if (entries.length === 0) return { ok: false, reason: "no functions" }
+
+    const invalid = entries.some((entry) => {
+      if (!entry.name) return true
+      if (!entry.description) return true
+      if (!entry.specs || entry.specs.length === 0) return true
+      return false
+    })
+
+    if (invalid) return { ok: false, reason: "invalid function entries" }
+    return { ok: true }
+  }
+
+  async function warnPlanSpec(input: {
+    sessionID: string
+    messageID: string
+    specPath: string
+    reason: string
+  }) {
+    log.warn("plan.spec", input)
+    await Session.updatePart({
+      id: Identifier.ascending("part"),
+      messageID: input.messageID,
+      sessionID: input.sessionID,
+      type: "text",
+      synthetic: true,
+      text: `Warning: plan spec file ${input.specPath} is ${input.reason}. Please create or fix it using the write/edit tool.`,
+    })
   }
 }
