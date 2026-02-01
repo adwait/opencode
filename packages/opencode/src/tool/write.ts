@@ -12,6 +12,7 @@ import { Filesystem } from "../util/filesystem"
 import { Instance } from "../project/instance"
 import { trimDiff } from "./edit"
 import { assertExternalDirectory } from "./external-directory"
+import { Session } from "../session"
 
 const MAX_DIAGNOSTICS_PER_FILE = 20
 const MAX_PROJECT_DIAGNOSTICS_FILES = 5
@@ -43,6 +44,9 @@ export const WriteTool = Tool.define("write", {
     })
 
     await Bun.write(filepath, params.content)
+    if (shouldMirrorSpec(ctx.sessionID, filepath)) {
+      await Session.mirrorSpec({ sessionID: ctx.sessionID, specPath: process.env.OPENCODE_SPEC_PATH })
+    }
     await Bus.publish(File.Event.Edited, {
       file: filepath,
     })
@@ -83,3 +87,10 @@ export const WriteTool = Tool.define("write", {
     }
   },
 })
+
+function shouldMirrorSpec(sessionID: string, filepath: string) {
+  if (!process.env.OPENCODE_SPEC_PATH) return false
+  if (!sessionID) return false
+  if (!filepath.endsWith(".spec.yaml")) return false
+  return true
+}

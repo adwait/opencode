@@ -22,6 +22,8 @@ import { Snapshot } from "@/snapshot"
 import type { Provider } from "@/provider/provider"
 import { PermissionNext } from "@/permission/next"
 import { Global } from "@/global"
+import os from "os"
+import fs from "fs/promises"
 
 export namespace Session {
   const log = Log.create({ service: "session" })
@@ -244,6 +246,39 @@ export namespace Session {
       ? path.join(Instance.worktree, ".opencode", "plans")
       : path.join(Global.Path.data, "plans")
     return path.join(base, [input.time.created, input.slug].join("-") + ".spec.yaml")
+  }
+
+  export async function mirrorSpec(input: { sessionID: string; specPath?: string }) {
+    if (!input.specPath) return
+    const session = await get(input.sessionID)
+    const source = spec(session)
+    const sourceFile = Bun.file(source)
+    const exists = await sourceFile.exists()
+    if (!exists) return
+
+    const expanded = expandSpecPath(input.specPath)
+    const target = await availablePath(expanded)
+    await fs.mkdir(path.dirname(target), { recursive: true })
+    await Bun.write(target, await sourceFile.text())
+  }
+
+  function expandSpecPath(specPath: string) {
+    const expanded = specPath.startsWith("~/") ? path.join(os.homedir(), specPath.slice(2)) : specPath
+    const resolved = path.isAbsolute(expanded) ? expanded : path.join(Instance.directory, expanded)
+    return resolved.replace(/\$\{([^}]+)\}/g, (_, name) => process.env[name] ?? "")
+  }
+
+  async function availablePath(specPath: string) {
+    if (!(await Bun.file(specPath).exists())) return specPath
+    const ext = path.extname(specPath)
+    const base = ext ? specPath.slice(0, -ext.length) : specPath
+    const suffix = ext || ".yaml"
+    let idx = 1
+    while (true) {
+      const next = `${base}_${idx}${suffix}`
+      if (!(await Bun.file(next).exists())) return next
+      idx += 1
+    }
   }
 
   export const get = fn(Identifier.schema("session"), async (id) => {

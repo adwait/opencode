@@ -91,8 +91,15 @@ export const RunCommand = cmd({
         type: "string",
         describe: "model variant (provider-specific reasoning effort, e.g., high, max, minimal)",
       })
+      .option("spec-path", {
+        type: "string",
+        describe: "mirror plan spec YAML to this file path",
+      })
   },
   handler: async (args) => {
+    if (args["spec-path"]) {
+      process.env.OPENCODE_SPEC_PATH = args["spec-path"]
+    }
     let message = [...args.message, ...(args["--"] || [])]
       .map((arg) => (arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg))
       .join(" ")
