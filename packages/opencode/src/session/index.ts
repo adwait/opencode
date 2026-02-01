@@ -48,6 +48,7 @@ export namespace Session {
       projectID: z.string(),
       directory: z.string(),
       parentID: Identifier.schema("session").optional(),
+      arettaDir: z.string().optional(),
       summary: z
         .object({
           additions: z.number(),
@@ -135,6 +136,7 @@ export namespace Session {
         parentID: Identifier.schema("session").optional(),
         title: z.string().optional(),
         permission: Info.shape.permission,
+        arettaDir: Info.shape.arettaDir,
       })
       .optional(),
     async (input) => {
@@ -143,6 +145,7 @@ export namespace Session {
         directory: Instance.directory,
         title: input?.title,
         permission: input?.permission,
+        arettaDir: input?.arettaDir,
       })
     },
   )
@@ -197,6 +200,7 @@ export namespace Session {
     parentID?: string
     directory: string
     permission?: PermissionNext.Ruleset
+    arettaDir?: string
   }) {
     const result: Info = {
       id: Identifier.descending("session", input.id),
@@ -207,6 +211,7 @@ export namespace Session {
       parentID: input.parentID,
       title: input.title ?? createDefaultTitle(!!input.parentID),
       permission: input.permission,
+      arettaDir: input.arettaDir,
       time: {
         created: Date.now(),
         updated: Date.now(),
@@ -248,22 +253,22 @@ export namespace Session {
     return path.join(base, [input.time.created, input.slug].join("-") + ".spec.yaml")
   }
 
-  export async function mirrorSpec(input: { sessionID: string; specPath?: string }) {
-    if (!input.specPath) return
+  export async function mirrorSpec(input: { sessionID: string }) {
     const session = await get(input.sessionID)
+    if (!session.arettaDir) return
     const source = spec(session)
     const sourceFile = Bun.file(source)
     const exists = await sourceFile.exists()
     if (!exists) return
 
-    const expanded = expandSpecPath(input.specPath)
-    const target = await availablePath(expanded)
-    await fs.mkdir(path.dirname(target), { recursive: true })
+    const targetDir = path.join(expandSpecDir(session.arettaDir), "planspec")
+    const target = await availablePath(path.join(targetDir, "spec.yaml"))
+    await fs.mkdir(targetDir, { recursive: true })
     await Bun.write(target, await sourceFile.text())
   }
 
-  function expandSpecPath(specPath: string) {
-    const expanded = specPath.startsWith("~/") ? path.join(os.homedir(), specPath.slice(2)) : specPath
+  function expandSpecDir(specDir: string) {
+    const expanded = specDir.startsWith("~/") ? path.join(os.homedir(), specDir.slice(2)) : specDir
     const resolved = path.isAbsolute(expanded) ? expanded : path.join(Instance.directory, expanded)
     return resolved.replace(/\$\{([^}]+)\}/g, (_, name) => process.env[name] ?? "")
   }
@@ -275,7 +280,7 @@ export namespace Session {
     const suffix = ext || ".yaml"
     let idx = 1
     while (true) {
-      const next = `${base}_${idx}${suffix}`
+      const next = `${base.replace(/spec$/, `spec-${idx}`)}${suffix}`
       if (!(await Bun.file(next).exists())) return next
       idx += 1
     }

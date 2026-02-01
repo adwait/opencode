@@ -757,6 +757,7 @@ export type Session = {
   projectID: string
   directory: string
   parentID?: string
+  arettaDir?: string
   summary?: {
     additions: number
     deletions: number
@@ -2758,6 +2759,7 @@ export type SessionCreateData = {
     parentID?: string
     title?: string
     permission?: PermissionRuleset
+    arettaDir?: string
   }
   path?: never
   query?: {

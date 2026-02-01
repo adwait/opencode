@@ -64,7 +64,7 @@ export const EditTool = Tool.define("edit", {
         })
         await Bun.write(filePath, params.newString)
         if (shouldMirrorSpec(ctx.sessionID, filePath)) {
-          await Session.mirrorSpec({ sessionID: ctx.sessionID, specPath: process.env.OPENCODE_SPEC_PATH })
+          await Session.mirrorSpec({ sessionID: ctx.sessionID })
         }
         await Bus.publish(File.Event.Edited, {
           file: filePath,
@@ -100,7 +100,7 @@ export const EditTool = Tool.define("edit", {
 
       await file.write(contentNew)
       if (shouldMirrorSpec(ctx.sessionID, filePath)) {
-        await Session.mirrorSpec({ sessionID: ctx.sessionID, specPath: process.env.OPENCODE_SPEC_PATH })
+        await Session.mirrorSpec({ sessionID: ctx.sessionID })
       }
       await Bus.publish(File.Event.Edited, {
         file: filePath,
@@ -162,7 +162,6 @@ export const EditTool = Tool.define("edit", {
 })
 
 function shouldMirrorSpec(sessionID: string, filepath: string) {
-  if (!process.env.OPENCODE_SPEC_PATH) return false
   if (!sessionID) return false
   if (!filepath.endsWith(".spec.yaml")) return false
   return true

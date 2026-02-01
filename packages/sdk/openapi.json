@@ -1197,6 +1197,9 @@
                   },
                   "permission": {
                     "$ref": "#/components/schemas/PermissionRuleset"
+                  },
+                  "arettaDir": {
+                    "type": "string"
                   }
                 }
               }
@@ -7840,6 +7843,9 @@
           "parentID": {
             "type": "string",
             "pattern": "^ses.*"
+          },
+          "arettaDir": {
+            "type": "string"
           },
           "summary": {
             "type": "object",

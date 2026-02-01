@@ -26,6 +26,7 @@ import { Locale } from "@/util/locale"
 import { formatDuration } from "@/util/format"
 import { createColors, createFrames } from "../../ui/spinner.ts"
 import { useDialog } from "@tui/ui/dialog"
+import { useArgs } from "@tui/context/args"
 import { DialogProvider as DialogProviderConnect } from "../dialog-provider"
 import { DialogAlert } from "../../ui/dialog-alert"
 import { useToast } from "../../ui/toast"
@@ -73,6 +74,7 @@ export function Prompt(props: PromptProps) {
   const renderer = useRenderer()
   const { theme, syntax } = useTheme()
   const kv = useKV()
+  const args = useArgs()
 
   function promptModelWarning() {
     toast.show({
@@ -503,7 +505,7 @@ export function Prompt(props: PromptProps) {
     const sessionID = props.sessionID
       ? props.sessionID
       : await (async () => {
-          const sessionID = await sdk.client.session.create({}).then((x) => x.data!.id)
+          const sessionID = await sdk.client.session.create({ arettaDir: args.arettaDir }).then((x) => x.data!.id)
           return sessionID
         })()
     const messageID = Identifier.ascending("message")

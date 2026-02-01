@@ -871,6 +871,7 @@ export class Session extends HeyApiClient {
       parentID?: string
       title?: string
       permission?: PermissionRuleset
+      arettaDir?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -883,6 +884,7 @@ export class Session extends HeyApiClient {
             { in: "body", key: "parentID" },
             { in: "body", key: "title" },
             { in: "body", key: "permission" },
+            { in: "body", key: "arettaDir" },
           ],
         },
       ],

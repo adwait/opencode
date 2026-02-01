@@ -71,6 +71,10 @@ export const TuiThreadCommand = cmd({
       .option("agent", {
         type: "string",
         describe: "agent to use",
+      })
+      .option("spec-path", {
+        type: "string",
+        describe: "directory to mirror plan spec files for this session",
       }),
   handler: async (args) => {
     // Resolve relative paths against PWD to preserve behavior when using --cwd flag
@@ -150,6 +154,7 @@ export const TuiThreadCommand = cmd({
         agent: args.agent,
         model: args.model,
         prompt,
+        arettaDir: args["spec-path"],
       },
       onExit: async () => {
         await client.call("shutdown", undefined)

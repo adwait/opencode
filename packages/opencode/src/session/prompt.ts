@@ -1907,12 +1907,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     return { ok: true }
   }
 
-  async function warnPlanSpec(input: {
-    sessionID: string
-    messageID: string
-    specPath: string
-    reason: string
-  }) {
+  async function warnPlanSpec(input: { sessionID: string; messageID: string; specPath: string; reason: string }) {
     log.warn("plan.spec", input)
     await Session.updatePart({
       id: Identifier.ascending("part"),
