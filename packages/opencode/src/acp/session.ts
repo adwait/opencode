@@ -17,12 +17,18 @@ export class ACPSessionManager {
     return this.sessions.get(sessionId)
   }
 
-  async create(cwd: string, mcpServers: McpServer[], model?: ACPSessionState["model"]): Promise<ACPSessionState> {
+  async create(
+    cwd: string,
+    mcpServers: McpServer[],
+    model?: ACPSessionState["model"],
+    arettaDir?: string,
+  ): Promise<ACPSessionState> {
     const session = await this.sdk.session
       .create(
         {
           title: `ACP Session ${crypto.randomUUID()}`,
           directory: cwd,
+          arettaDir,
         },
         { throwOnError: true },
       )
