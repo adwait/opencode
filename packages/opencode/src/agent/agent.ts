@@ -13,6 +13,7 @@ import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
+import PROMPT_ULTRAGUESS from "./prompt/ultraguess.txt"
 import { PermissionNext } from "@/permission/next"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Global } from "@/global"
@@ -199,6 +200,43 @@ export namespace Agent {
           user,
         ),
         prompt: PROMPT_SUMMARY,
+      },
+      ultraguess: {
+        name: "ultraguess",
+        description:
+          "Specification mining agent that recovers developer intent from Python and TypeScript codebases. Identifies formal properties (preconditions, postconditions, invariants), detects potential bugs, and annotates using pflang format. Uses all available data sources: code, tests, git history, library contracts, and domain knowledge.",
+        mode: "primary",
+        options: {},
+        native: true,
+        color: "#9B59B6",
+        model: {
+          providerID: "litellm",
+          modelID: "opus",
+        },
+        permission: PermissionNext.merge(
+          defaults,
+          PermissionNext.fromConfig({
+            question: "allow",
+            bash: "allow",
+            read: "allow",
+            edit: {
+              "*": "allow",
+              "*.py": "allow",
+              "*.ts": "allow",
+              "*.tsx": "allow",
+              "*.js": "allow",
+              "*.jsx": "allow",
+            },
+            write: {
+              ".pf/**": "allow",
+            },
+            webfetch: "allow",
+            websearch: "allow",
+            task: "allow",
+          }),
+          user,
+        ),
+        prompt: PROMPT_ULTRAGUESS,
       },
     }
 
