@@ -211,7 +211,7 @@ export namespace Agent {
         color: "#9B59B6",
         model: {
           providerID: "litellm",
-          modelID: "opus",
+          modelID: "claude-opus",
         },
         permission: PermissionNext.merge(
           defaults,
