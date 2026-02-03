@@ -229,8 +229,11 @@ export const RunCommand = cmd({
       })()
 
       // Validate agent if specified
+      // Skip validation in --attach mode since there's no local instance context
       const resolvedAgent = await (async () => {
         if (!args.agent) return undefined
+        // In attach mode, pass agent to server without local validation
+        if (args.attach) return args.agent
         const agent = await Agent.get(args.agent)
         if (!agent) {
           UI.println(
@@ -292,26 +295,27 @@ export const RunCommand = cmd({
               : args.title
             : undefined
 
+        // In headless/attach mode, auto-deny interactive prompts and external access
+        const headlessPermissions = [
+          {
+            permission: "question",
+            action: "deny",
+            pattern: "*",
+          },
+          {
+            permission: "external_directory",
+            action: "deny",
+            pattern: "*",
+          },
+        ]
         const result = await sdk.session.create(
           title
             ? {
                 title,
-                permission: [
-                  {
-                    permission: "question",
-                    action: "deny",
-                    pattern: "*",
-                  },
-                ],
+                permission: headlessPermissions,
               }
             : {
-                permission: [
-                  {
-                    permission: "question",
-                    action: "deny",
-                    pattern: "*",
-                  },
-                ],
+                permission: headlessPermissions,
               },
         )
         return result.data?.id

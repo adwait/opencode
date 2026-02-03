@@ -76,6 +76,7 @@
     "@opencode-ai/plugin": "workspace:*",
     "@opencode-ai/script": "workspace:*",
     "@opencode-ai/sdk": "workspace:*",
+    "opencode-linux-arm64": "1.1.48",
     "typescript": "catalog:"
   },
   "repository": {
